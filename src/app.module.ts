@@ -28,7 +28,7 @@ import { Departure } from './departure/entities/departure.entity';
         password: configService.get('DATABASE_PASSWORD'),
         database: configService.get('DATABASE_NAME'),
         entities: [Station, Departure],
-        synchronize: true, // TEMP for dev only
+        synchronize: false, // TEMP for dev only
       }),
       inject: [ConfigService],
     }), 
