@@ -3,6 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosResponse } from 'axios';
 import { signUrl } from './utils/sign-url';
 
+// Added imports for PTV service
+import { InjectRepository } from '@nestjs/typeorm';
+import { Departure } from '../departure/entities/departure.entity';
+import { Station } from '../station/entities/station.entity';
+import { Repository } from 'typeorm';
+
 export interface PtvDeparture {
   stop_id: number;
   route_id: number;
@@ -66,7 +72,12 @@ export class PtvService {
   private readonly devId: string;
   private readonly apiKey: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: ConfigService, 
+    @InjectRepository(Station)
+  private stationRepository: Repository<Station>,
+  @InjectRepository(Departure)
+  private departureRepository: Repository<Departure>
+) {
     this.devId = this.configService.get<string>('PTV_USER_ID') || '';
     this.apiKey = this.configService.get<string>('PTV_API_KEY') || '';
 
@@ -232,5 +243,53 @@ export class PtvService {
       }
       throw new HttpException('Internal server error while fetching routes', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+  async saveLiveDeparturesForStation(stationId: number): Promise<number> {
+    const station = await this.stationRepository.findOneBy({ id: stationId });
+    if (!station) {
+      throw new Error(`Station with id ${stationId} not found.`);
+    }
+
+    const data = await this.getDepartures(station.ptvStationId, 0, 5);
+    let savedCount = 0;
+
+    for (const d of data.departures) {
+      // ✅ Check for existing departure (same station and scheduled time)
+      const existing = await this.departureRepository.findOne({
+        where: {
+          station: { id: station.id },
+          scheduledDepartureUtc: new Date(d.scheduled_departure_utc),
+        },
+        relations: ['station'],
+      });
+
+      if (existing) continue;
+
+      const delay = this.calculateDelayInMinutes(
+        d.scheduled_departure_utc,
+        d.estimated_departure_utc,
+      );
+
+      const departureData = {
+        station: station,
+        direction: data.directions[d.direction_id]?.direction_name || 'Unknown',
+        platform: d.platform_number || 'N/A',
+        scheduledDepartureUtc: new Date(d.scheduled_departure_utc),
+        estimatedDepartureUtc: d.estimated_departure_utc ? new Date(d.estimated_departure_utc) : undefined,
+        delayInMinutes: delay ?? undefined,
+      };
+
+      await this.departureRepository.save(departureData);
+      savedCount++;
+    }
+    return savedCount;
+  }
+  private calculateDelayInMinutes(scheduled: string, estimated?: string): number | null {
+    if (!scheduled || !estimated) return null;
+
+    const start = new Date(scheduled).getTime();
+    const end = new Date(estimated).getTime();
+    const diff = Math.round((end - start) / (1000 * 60));
+    return diff >= 0 ? diff : 0;
   }
 }
