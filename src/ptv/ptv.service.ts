@@ -1,13 +1,12 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosResponse } from 'axios';
+import { createHmac } from 'crypto';
 import { signUrl } from './utils/sign-url';
-
-// Added imports for PTV service
-import { InjectRepository } from '@nestjs/typeorm';
-import { Departure } from '../departure/entities/departure.entity';
-import { Station } from '../station/entities/station.entity';
+import { Departure } from 'src/departure/entities/departure.entity';
+import { Station } from 'src/station/entities/station.entity';
 import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 export interface PtvDeparture {
   stop_id: number;
@@ -118,7 +117,25 @@ export class PtvService {
         },
       });
 
-      return response.data;
+      const data = response.data;
+      // Persist fetched departures to the database
+      const station = await this.stationRepository.findOne({ where: { ptvStationId: stopId } });
+      if (station) {
+        const departureEntities = data.departures.map(dep =>
+          this.departureRepository.create({
+            station,
+            direction: dep.direction_id.toString(),
+            platform: dep.platform_number ?? '',
+            scheduledDepartureUtc: new Date(dep.scheduled_departure_utc),
+            estimatedDepartureUtc: dep.estimated_departure_utc ? new Date(dep.estimated_departure_utc) : undefined,
+            delayInMinutes: dep.estimated_departure_utc
+              ? Math.round((new Date(dep.estimated_departure_utc).getTime() - new Date(dep.scheduled_departure_utc).getTime()) / 60000)
+              : 0,
+          }),
+        );
+        await this.departureRepository.save(departureEntities);
+      }
+      return data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
@@ -291,5 +308,30 @@ export class PtvService {
     const end = new Date(estimated).getTime();
     const diff = Math.round((end - start) / (1000 * 60));
     return diff >= 0 ? diff : 0;
+  }
+
+  async insertStations(
+    stations: { name: string; ptvStationId: number }[],
+  ): Promise<Station[]> {
+    const stationEntities = stations.map((station) =>
+      this.stationRepository.create(station),
+    );
+    return this.stationRepository.save(stationEntities);
+  }
+
+  private signUrl(url: string): string {
+    const devId = process.env.PTV_DEV_ID;
+    const apiKey = process.env.PTV_API_KEY;
+
+    if (!devId || !apiKey) {
+      throw new Error('PTV_DEV_ID and PTV_API_KEY must be set in environment variables');
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHmac('sha1', apiKey)
+      .update(`${devId}${timestamp}`)
+      .digest('hex');
+
+    return `${url}&dev_id=${devId}&timestamp=${timestamp}&signature=${signature}`;
   }
 }

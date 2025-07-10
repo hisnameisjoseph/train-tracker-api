@@ -9,7 +9,7 @@ export class Station {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ name: 'ptv_station_id' })
   ptvStationId: number;
 
   @OneToMany(() => Departure, departure => departure.station)

@@ -6,21 +6,30 @@ import { Departure } from './entities/departure.entity';
 
 @Controller('departure')
 export class DepartureController {
-  constructor(private readonly departureService: DepartureService) {}
+  constructor(
+    private readonly departureService: DepartureService,
+  ) {}
+
+  @Get()
+  findAll() {
+    return this.departureService.findAll();
+  }
 
   @Post()
   async create(@Body() createDepartureDto: CreateDepartureDto): Promise<Departure> {
     return await this.departureService.create(createDepartureDto);
   }
 
-  @Get()
-  async findAll(): Promise<Departure[]> {
-    return await this.departureService.findAll();
-  }
-
   @Get('station/:stationId')
   async findByStationId(@Param('stationId', ParseIntPipe) stationId: number): Promise<Departure[]> {
     return await this.departureService.findByStationId(stationId);
+  }
+
+  @Get('ptv/:ptvStationId')
+  async findByPtv(
+    @Param('ptvStationId', ParseIntPipe) ptvStationId: number,
+  ): Promise<Departure[]> {
+    return await this.departureService.findByPtvStation(ptvStationId);
   }
 
   @Get(':id')

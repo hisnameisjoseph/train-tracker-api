@@ -33,10 +33,7 @@ export class DepartureService {
   }
 
   async findAll(): Promise<Departure[]> {
-    return await this.departureRepository.find({
-      relations: ['station'],
-      order: { scheduledDepartureUtc: 'ASC' },
-    });
+    return this.departureRepository.find({ relations: ['station'] });
   }
 
   async findByStationId(stationId: number): Promise<Departure[]> {
@@ -87,5 +84,18 @@ export class DepartureService {
   async remove(id: number): Promise<void> {
     const departure = await this.findOne(id);
     await this.departureRepository.remove(departure);
+  }
+
+  /**
+   * Fetch departures by external PTV station ID
+   * @param ptvStationId - The PTV station ID
+   */
+  async findByPtvStation(ptvStationId: number): Promise<Departure[]> {
+    return this.departureRepository
+      .createQueryBuilder('departure')
+      .leftJoinAndSelect('departure.station', 'station')
+      .where('station.ptv_station_id = :ptvId', { ptvId: ptvStationId })
+      .orderBy('departure.scheduledDepartureUtc', 'ASC')
+      .getMany();
   }
 }

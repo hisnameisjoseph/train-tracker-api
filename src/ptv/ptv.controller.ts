@@ -18,6 +18,16 @@ export class PtvController {
     return await this.ptvService.getDepartures(stopId, routeTypeNum, maxResultsNum, includeCancel);
   }
 
+  @Get('departures/:stopId')
+  async getDeparturesAlias(
+    @Param('stopId', ParseIntPipe) stopId: number,
+    @Query('routeType') routeType?: string,
+    @Query('maxResults') maxResults?: string,
+    @Query('includeCancelled') includeCancelled: string = 'false',
+  ): Promise<PtvDeparturesResponse> {
+    return this.getDepartures(stopId, routeType, maxResults, includeCancelled);
+  }
+
   @Get('departures/route/:routeId/stop/:stopId')
   async getDeparturesForRoute(
     @Param('routeId', ParseIntPipe) routeId: number,
