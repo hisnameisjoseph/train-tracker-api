@@ -31,6 +31,11 @@ export class DepartureController {
   ): Promise<Departure[]> {
     return await this.departureService.findByPtvStation(ptvStationId);
   }
+  
+  @Get('next-departures')
+  async getNextDeparturesForAllStations() {
+    return await this.departureService.getNextDeparturesForAllStations();
+  }
 
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Departure> {

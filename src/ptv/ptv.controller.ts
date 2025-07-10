@@ -54,4 +54,10 @@ export class PtvController {
     const routeTypeNum = routeType ? parseInt(routeType) : 0;
     return await this.ptvService.getRoutes(routeTypeNum);
   }
+
+  @Get('refresh-all')
+  async refreshAllDepartures() {
+    await this.ptvService.refreshAllStationDepartures();
+    return { message: 'All station departures refreshed successfully' };
+  }
 }

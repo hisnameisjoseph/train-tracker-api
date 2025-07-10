@@ -22,7 +22,8 @@
     "migration:create": "ts-node ./node_modules/typeorm/cli.js migration:create",
     "migration:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d ./typeorm-cli.config.js",
     "migration:revert": "ts-node ./node_modules/typeorm/cli.js migration:revert -d ./typeorm-cli.config.js",
-    "migration:show": "ts-node ./node_modules/typeorm/cli.js migration:show -d ./typeorm-cli.config.js"
+    "migration:show": "ts-node ./node_modules/typeorm/cli.js migration:show -d ./typeorm-cli.config.js",
+    "script": "ts-node -r tsconfig-paths/register"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

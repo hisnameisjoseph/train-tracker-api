@@ -118,11 +118,16 @@ export class PtvService {
       });
 
       const data = response.data;
-      // Persist fetched departures to the database
       const station = await this.stationRepository.findOne({ where: { ptvStationId: stopId } });
+
       if (station) {
-        const departureEntities = data.departures.map(dep =>
-          this.departureRepository.create({
+        // First, delete all existing departures for this station
+        await this.departureRepository.delete({ station: { id: station.id } });
+
+        // Now, create and save the new departures
+        const departureEntities = data.departures.map(dep => {
+          const route = data.routes[dep.route_id];
+          return this.departureRepository.create({
             station,
             direction: dep.direction_id.toString(),
             platform: dep.platform_number ?? '',
@@ -131,10 +136,13 @@ export class PtvService {
             delayInMinutes: dep.estimated_departure_utc
               ? Math.round((new Date(dep.estimated_departure_utc).getTime() - new Date(dep.scheduled_departure_utc).getTime()) / 60000)
               : 0,
-          }),
-        );
+            routeId: dep.route_id,
+            routeName: route ? route.route_name : 'Unknown',
+          });
+        });
         await this.departureRepository.save(departureEntities);
       }
+
       return data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -287,6 +295,7 @@ export class PtvService {
         d.estimated_departure_utc,
       );
 
+      const route = data.routes[d.route_id];
       const departureData = {
         station: station,
         direction: data.directions[d.direction_id]?.direction_name || 'Unknown',
@@ -294,6 +303,8 @@ export class PtvService {
         scheduledDepartureUtc: new Date(d.scheduled_departure_utc),
         estimatedDepartureUtc: d.estimated_departure_utc ? new Date(d.estimated_departure_utc) : undefined,
         delayInMinutes: delay ?? undefined,
+        routeId: d.route_id,
+        routeName: route ? route.route_name : 'Unknown', // Add routeName
       };
 
       await this.departureRepository.save(departureData);
@@ -317,6 +328,22 @@ export class PtvService {
       this.stationRepository.create(station),
     );
     return this.stationRepository.save(stationEntities);
+  }
+  
+  /**
+   * Fetch and save departures for all stations in the database
+   */
+  async refreshAllStationDepartures(): Promise<void> {
+    const stations = await this.stationRepository.find();
+    
+    for (const station of stations) {
+      try {
+        await this.getDepartures(station.ptvStationId);
+        console.log(`Refreshed departures for ${station.name}`);
+      } catch (error) {
+        console.error(`Error refreshing departures for ${station.name}:`, error.message);
+      }
+    }
   }
 
   private signUrl(url: string): string {

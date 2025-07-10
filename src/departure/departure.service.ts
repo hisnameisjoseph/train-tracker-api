@@ -98,4 +98,28 @@ export class DepartureService {
       .orderBy('departure.scheduledDepartureUtc', 'ASC')
       .getMany();
   }
+
+  /**
+   * Get the next 5 departures for each station
+   */
+  async getNextDeparturesForAllStations(): Promise<{[key: string]: Departure[]}> {
+    const stationDepartures: {[key: string]: Departure[]} = {};
+    
+    // Get all stations
+    const stations = await this.stationService.findAll();
+    
+    // For each station, get the next 5 departures
+    for (const station of stations) {
+      const departures = await this.departureRepository.find({
+        where: { station: { id: station.id } },
+        relations: ['station'],
+        order: { scheduledDepartureUtc: 'ASC' },
+        take: 5 // Limit to 5 results
+      });
+      
+      stationDepartures[station.name] = departures;
+    }
+    
+    return stationDepartures;
+  }
 }

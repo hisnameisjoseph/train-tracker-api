@@ -25,6 +25,12 @@ export class Departure {
   @Column({ type: 'int', nullable: true })
   delayInMinutes: number;
 
+  @Column({ type: 'int', nullable: true })
+  routeId: number;
+
+  @Column({ nullable: true })
+  routeName: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }
