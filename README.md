@@ -1,98 +1,117 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🚆 Train Tracker API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS-based backend service that fetches, stores, and serves real-time train departure information using the Public Transport Victoria (PTV) API.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 📦 System Architecture
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This project uses a modular architecture with the following core components:
 
-## Project setup
+### 🔌 PTV Module
+Interfaces with the external PTV API.
+- **Service**: Authenticates and sends API requests, parses response
+- **Controller**: Provides endpoints for live train data
 
+### 🏙️ Station Module
+Manages train station records.
+- **Entity**: Station ID, name, and associated PTV ID
+- **Service**: Add, update, retrieve stations
+- **Controller**: Endpoints to manage stations
+
+### 🕒 Departure Module
+Handles storage and retrieval of train departure information.
+- **Entity**: Direction, platform, scheduled/estimated times, delays
+- **Service**: Save incoming data, query stored departures
+- **Controller**: Read-only endpoints for historical data
+
+---
+
+## 🔄 Data Flow
+
+1. **Station Setup**: Add stations with their PTV IDs
+2. **Fetch Live Data**: Use `/ptv/...` endpoints to retrieve departures
+3. **Store Departures**: Data is stored in PostgreSQL via TypeORM
+4. **Query History**: Use `/departure/...` endpoints to retrieve stored records
+
+---
+
+## 🔗 API Endpoints
+
+### ✅ PTV Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/ptv/departures/:stopId` | Get live departures for a stop |
+| GET | `/ptv/departures/route/:routeId/stop/:stopId` | Filter by route |
+| GET | `/ptv/search/:searchTerm` | Search for stations in PTV system |
+
+### 📄 Departure Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/departure` | All stored departures |
+| GET | `/departure/ptv/:ptvStationId` | By PTV station |
+| GET | `/departure/station/:stationId` | By internal station ID |
+
+### 🏙️ Station Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/station` | List all stations |
+| GET | `/station/:id` | Get station details |
+
+---
+
+## ⚙️ Technologies Used
+
+- **[NestJS](https://nestjs.com/)** – Modular backend framework for Node.js
+- **TypeORM** – ORM for database interactions
+- **PostgreSQL** – Relational database
+- **PTV API** – External source for real-time transport data
+
+---
+
+## 🚀 Getting Started
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+2. **Configure environment**
+   Create a .env file with:
+   ```
+   PTV_USER_ID=your_user_id
+  PTV_API_KEY=your_api_key
+   ```
+3. **Run the database (Docker)**
+   ```bash
+   docker compose up -d
+   ```
+4. **Run migrations**
+   ```bash
+   npm run migration:run
+   ```
+5. **Start the server**
+   ```bash
+   npm run start:dev
+   ```      
+To test the API, you can use tools like Postman or cURL to hit the endpoints defined above.
+
+## 🧪 Testing
+Run tests using:
 ```bash
-$ npm install
+npm run test
+```
+To retrive the table of contents by using psql, you can first run the server using:
+```bash
+docker exec -it your_container_name psql -U postgres -d traindb
+```
+Replace `your_container_name` with the name of your Docker container running PostgreSQL.
+Replace `traindb` with the name of your database if it's different.
+
+Then, you can run the following command to get the table of contents:
+```sql
+\dt
 ```
 
-## Compile and run the project
+## 📄 License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
