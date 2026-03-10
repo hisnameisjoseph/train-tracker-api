@@ -79,7 +79,7 @@ Handles storage and retrieval of train departure information.
    Create a .env file with:
    ```
    PTV_USER_ID=your_user_id
-  PTV_API_KEY=your_api_key
+   PTV_API_KEY=your_api_key
    ```
 3. **Run the database (Docker)**
    ```bash
