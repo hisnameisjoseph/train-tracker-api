@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosResponse } from 'axios';
 import { createHmac } from 'crypto';
@@ -7,6 +7,7 @@ import { Departure } from 'src/departure/entities/departure.entity';
 import { Station } from 'src/station/entities/station.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 export interface PtvDeparture {
   stop_id: number;
@@ -70,6 +71,7 @@ export interface PtvDeparturesResponse {
 export class PtvService {
   private readonly devId: string;
   private readonly apiKey: string;
+  private readonly logger = new Logger(PtvService.name);
 
   constructor(private readonly configService: ConfigService, 
     @InjectRepository(Station)
@@ -343,6 +345,31 @@ export class PtvService {
       } catch (error) {
         console.error(`Error refreshing departures for ${station.name}:`, error.message);
       }
+    }
+  }
+
+  /**
+   * Automatically refresh all station departures every minute.
+   * The cron job is set to run at the start of every minute.
+   * Note: Running this every minute can be intensive and may hit API rate limits.
+   * Consider changing to EVERY_5_MINUTES or another interval if issues arise.
+   * To change the frequency, you just need to replace CronExpression.EVERY_MINUTE with a different value.
+
+    Here are some examples:
+    
+    Every 30 seconds: CronExpression.EVERY_30_SECONDS
+    Every 5 minutes: CronExpression.EVERY_5_MINUTES
+    Every hour: CronExpression.EVERY_HOUR
+    Once a day at midnight: CronExpression.EVERY_DAY_AT_MIDNIGHT
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleCron() {
+    this.logger.log('Running scheduled job to refresh all station departures...');
+    try {
+      await this.refreshAllStationDepartures();
+      this.logger.log('Scheduled job finished successfully.');
+    } catch (error) {
+      this.logger.error('Scheduled job failed:', error.stack);
     }
   }
 

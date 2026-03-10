@@ -5,6 +5,7 @@ import { CreateDepartureDto } from './dto/create-departure.dto';
 import { UpdateDepartureDto } from './dto/update-departure.dto';
 import { Departure } from './entities/departure.entity';
 import { StationService } from '../station/station.service';
+import { format, toZonedTime } from 'date-fns-tz';
 
 @Injectable()
 export class DepartureService {
@@ -90,21 +91,33 @@ export class DepartureService {
    * Fetch departures by external PTV station ID
    * @param ptvStationId - The PTV station ID
    */
-  async findByPtvStation(ptvStationId: number): Promise<Departure[]> {
-    return this.departureRepository
+  async findByPtvStation(ptvStationId: number): Promise<any[]> {
+    const departures = await this.departureRepository
       .createQueryBuilder('departure')
       .leftJoinAndSelect('departure.station', 'station')
       .where('station.ptv_station_id = :ptvId', { ptvId: ptvStationId })
       .orderBy('departure.scheduledDepartureUtc', 'ASC')
       .getMany();
+
+    // Add local time fields to each departure
+    return departures.map(dep => {
+      const timeZone = 'Australia/Melbourne';
+      const scheduledLocal = dep.scheduledDepartureUtc ? format(toZonedTime(dep.scheduledDepartureUtc, timeZone), 'yyyy-MM-dd HH:mm:ssXXX', { timeZone }) : null;
+      const estimatedLocal = dep.estimatedDepartureUtc ? format(toZonedTime(dep.estimatedDepartureUtc, timeZone), 'yyyy-MM-dd HH:mm:ssXXX', { timeZone }) : null;
+      return {
+        ...dep,
+        scheduledDepartureLocal: scheduledLocal,
+        estimatedDepartureLocal: estimatedLocal,
+      };
+    });
   }
 
   /**
    * Get the next 5 departures for each station
    */
-  async getNextDeparturesForAllStations(): Promise<{[key: string]: Departure[]}> {
-    const stationDepartures: {[key: string]: Departure[]} = {};
-    
+  async getNextDeparturesForAllStations(): Promise<{[key: string]: any[]}> {
+    const stationDepartures: {[key: string]: any[]} = {};
+    const timeZone = 'Australia/Melbourne';
     // Get all stations
     const stations = await this.stationService.findAll();
     
@@ -117,7 +130,16 @@ export class DepartureService {
         take: 5 // Limit to 5 results
       });
       
-      stationDepartures[station.name] = departures;
+      // Add local time fields to each departure
+      stationDepartures[station.name] = departures.map(dep => {
+        const scheduledLocal = dep.scheduledDepartureUtc ? format(toZonedTime(dep.scheduledDepartureUtc, timeZone), 'yyyy-MM-dd HH:mm:ssXXX', { timeZone }) : null;
+        const estimatedLocal = dep.estimatedDepartureUtc ? format(toZonedTime(dep.estimatedDepartureUtc, timeZone), 'yyyy-MM-dd HH:mm:ssXXX', { timeZone }) : null;
+        return {
+          ...dep,
+          scheduledDepartureLocal: scheduledLocal,
+          estimatedDepartureLocal: estimatedLocal,
+        };
+      });
     }
     
     return stationDepartures;

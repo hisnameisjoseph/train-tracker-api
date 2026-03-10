@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Station } from './station/entities/station.entity';
 import { Departure } from './departure/entities/departure.entity';
+import { ScheduleModule } from '@nestjs/schedule';
 
 
 @Module({
@@ -35,6 +36,7 @@ import { Departure } from './departure/entities/departure.entity';
     StationModule, 
     DepartureModule,
     PtvModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],
